@@ -102,21 +102,21 @@ python3 src/submit_job.py \
 ```
 
 #### 参数说明
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--os` | `openeuler` | 操作系统名称 |
-| `--os_arch` | `aarch64` | 操作系统架构 |
-| `--os_version` | `24.03-LTS` | 操作系统版本 |
-| `--testbox` | `vm-2p8g` | 测试机类型 |
-| `--my_account` | `my_account` | 用户账户 |
-| `--my_name` | `my_name` | 用户姓名 |
-| `--my_token` | `my_token` | 认证令牌 |
-| `--my_email` | `my_email@qq.com` | 用户邮箱 |
-| `--job_yaml` | `host-info.yaml` | 作业 YAML 文件路径 |
-| `--sched_host` | `172.168.178.181` | 调度器主机地址 |
-| `--sched_port` | `3000` | 调度器端口 |
-| `--extra` | 无 | 额外的键值对参数，格式为 key=value，可重复使用 |
-| `--skip_prepare` | 无 | 跳过 LKP 客户端准备（如果已存在） |
+| 参数 | 默认值 | 说明                                                                                         |
+|------|--------|--------------------------------------------------------------------------------------------|
+| `--os` | `openeuler` | 操作系统名称                                                                                     |
+| `--os_arch` | `aarch64` | 操作系统架构                                                                                     |
+| `--os_version` | `24.03-LTS` | 操作系统版本                                                                                     |
+| `--testbox` | `vm-2p8g` | 测试机类型                                                                                      |
+| `--my_account` | `my_account` | 用户账户                                                                                       |
+| `--my_name` | `my_name` | 用户姓名                                                                                       |
+| `--my_token` | `my_token` | 认证令牌                                                                                       |
+| `--my_email` | `my_email@qq.com` | 用户邮箱                                                                                       |
+| `--job_yaml` | `host-info.yaml` | 作业 YAML 文件路径                                                                               |
+| `--sched_host` | `172.168.178.181` | 调度器主机地址                                                                                    |
+| `--sched_port` | `3000` | 调度器端口                                                                                      |
+| `--extra` | 无 | 额外的键值对参数，格式为 key=value，可重复使用，支持空格分隔多个键值对（例如：`--extra "kernel=linux-5.10 memory=8G cpu=4"`） |
+| `--skip_prepare` | 无 | 跳过 LKP 客户端准备（如果已存在）                                                                        |
 
 #### 输出示例
 ```
@@ -220,7 +220,7 @@ python3 src/submit_wait_job.py \
 | `--job_yaml` | `host-info.yaml` | 作业 YAML 文件路径 |
 | `--sched_host` | `172.168.178.181` | 调度器主机地址 |
 | `--sched_port` | `3000` | 调度器端口 |
-| `--extra` | 无 | 额外的键值对参数，格式为 key=value，可重复使用 |
+| `--extra` | 无 | 额外的键值对参数，格式为 key=value，可重复使用，支持空格分隔多个键值对（例如：`--extra "kernel=linux-5.10 memory=8G cpu=4"`） |
 | `--skip_prepare` | 无 | 跳过 LKP 客户端准备（如果已存在） |
 | `--poll_interval` | `10` | 轮询间隔（秒） |
 | `--timeout` | `86400` | 最长等待时间（秒），默认24小时 |

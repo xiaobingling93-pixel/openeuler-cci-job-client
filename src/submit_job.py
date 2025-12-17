@@ -25,6 +25,7 @@ from lib.constant import (
     SCHED_PORT,
     SCHED_HOST,
 )
+from lib.parse_params_utils import parse_extra_params
 
 
 def print_step(step: str, message: str) -> None:
@@ -242,6 +243,8 @@ def submit_job(
     return job_id
 
 
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='提交 LKP 作业并返回 job_id',
@@ -260,8 +263,9 @@ def main():
   # 指定自定义作业文件
   %(prog)s --job_yaml /path/to/my-job.yaml
   
-  # 使用额外参数
+  # 使用额外参数（多种方式）
   %(prog)s --extra kernel=linux-5.10 --extra memory=8G --extra cpu=4
+  %(prog)s --extra "kernel=linux-5.10 memory=8G cpu=4"
   
   # 输出 job_id 到文件
   %(prog)s | tee job_id.txt
@@ -279,12 +283,15 @@ def main():
     parser.add_argument('--job_yaml', default=JOB_YAML, help='作业 YAML 文件 (默认: host-info.yaml)')
     parser.add_argument('--sched_port', type=int, default=SCHED_PORT, help='调度器端口 (默认: 3000)')
     parser.add_argument('--sched_host', default=SCHED_HOST, help='调度器主机 (默认: 172.168.178.181)')
-    parser.add_argument('--extra', action='append', default=[], help='额外的键值对参数，格式为 key=value，可重复使用')
+    parser.add_argument('--extra', action='append', default=[], help='额外的键值对参数，格式为 key=value 可重复使用，支持空格分隔多个键值对')
     parser.add_argument('--skip_prepare', action='store_true', help='跳过 LKP 客户端准备')
     
     args = parser.parse_args()
     
     try:
+        # 解析 extra 参数
+        extra_params = parse_extra_params(args.extra) if args.extra else None
+        
         job_id = submit_job(
             os_name=args.os,
             os_arch=args.os_arch,
@@ -298,7 +305,7 @@ def main():
             sched_port=args.sched_port,
             sched_host=args.sched_host,
             skip_prepare=args.skip_prepare,
-            extra_params=args.extra if args.extra else None
+            extra_params=extra_params
         )
         # 输出 job_id，便于管道捕获
         print(job_id)
