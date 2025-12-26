@@ -9,6 +9,8 @@ import json
 import argparse
 import requests
 
+from lib.constant import SCHED_HOST, SRV_HTTP_PORT
+
 
 def print_step(step: str, message: str) -> None:
     """打印步骤信息"""
@@ -21,6 +23,82 @@ def die(msg: str) -> None:
     """输出错误并退出"""
     print(f"错误: {msg}", file=sys.stderr)
     sys.exit(1)
+
+
+def fetch_job_status(
+    job_id: str,
+    sched_host: str,
+    sched_port: int,
+    fields: str = 'job_stage',
+    timeout: int = 30
+) -> tuple[dict, int]:
+    """
+    获取作业状态的网络请求方法。
+
+    Args:
+        job_id: 作业ID
+        sched_host: 调度器主机
+        sched_port: 调度器端口
+        fields: 查询字段，默认为 'job_stage'
+        timeout: 请求超时时间（秒），默认为30秒
+
+    Returns:
+        包含响应数据和状态码的元组 (data, status_code)
+
+    Raises:
+        requests.exceptions.RequestException: 网络请求异常
+        json.JSONDecodeError: JSON解析异常
+    """
+    api_url = f"http://{sched_host}:{sched_port}/scheduler/v1/jobs/{job_id}?fields={fields}"
+    resp = requests.get(api_url, timeout=timeout)
+    data = resp.json() if resp.content else {}
+    return data, resp.status_code
+
+
+def fetch_stats_json(
+    host: str = None,
+    port: int = None,
+    url: str = None,
+    timeout: int = 30
+) -> tuple[dict, int]:
+    """
+    获取stats.json文件的网络请求方法。
+
+    Args:
+        host: 服务器主机，如果为None则使用constant中的SCHED_HOST
+        port: 服务器端口，如果为None则使用constant中的SRV_HTTP_PORT
+        timeout: 请求超时时间（秒），默认为30秒
+
+    Returns:
+        包含响应数据和状态码的元组 (data, status_code)
+
+    Raises:
+        requests.exceptions.RequestException: 网络请求异常
+        json.JSONDecodeError: JSON解析异常
+    """
+    # 使用默认值
+    if host is None:
+        host = SCHED_HOST
+    if port is None:
+        port = SRV_HTTP_PORT
+    
+    # 构建URL路径
+    url_path = url+"/stats.json"
+    api_url = f"http://{host}:{port}{url_path}"
+    
+    try:
+        resp = requests.get(api_url, timeout=timeout)
+        if resp.status_code == 200:
+            data = resp.json() if resp.content else {}
+            return data, resp.status_code
+        else:
+            return {}, resp.status_code
+    except requests.exceptions.RequestException as e:
+        print(f"请求stats.json异常：{e}")
+        raise
+    except json.JSONDecodeError as e:
+        print(f"JSON解析错误：{e}")
+        raise
 
 
 def wait_job_status(
@@ -43,8 +121,7 @@ def wait_job_status(
     if not job_id:
         die("错误：未设置 job_id 变量")
     
-    api_url = f"http://{sched_host}:{sched_port}/scheduler/v1/jobs/{job_id}?fields=job_stage"
-    print_step("步骤1", f"轮询任务状态，API: {api_url}")
+    print_step("步骤1", f"轮询任务状态")
     
     # 初始化变量
     final_data = None
@@ -56,13 +133,12 @@ def wait_job_status(
         if elapsed > timeout:
             die(f"等待超时（{timeout}秒），任务仍未完成")
         try:
-            resp = requests.get(api_url, timeout=30)
-            if resp.status_code != 200:
-                print(f"警告：请求 API 失败（HTTP状态码：{resp.status_code}），{poll_interval}秒后重试...")
+            data, status_code = fetch_job_status(job_id, sched_host, sched_port, fields='job_stage', timeout=30)
+            if status_code != 200:
+                print(f"警告：请求 API 失败（HTTP状态码：{status_code}），{poll_interval}秒后重试...")
                 time.sleep(poll_interval)
                 continue
             
-            data = resp.json()
             job_stage = data.get('job_stage')
             if job_stage is None:
                 print(f"警告：无法解析任务状态，响应内容：{data}")
@@ -84,11 +160,34 @@ def wait_job_status(
             print(f"JSON 解析错误：{e}，{poll_interval}秒后重试...")
         
         time.sleep(poll_interval)
-    
+
+    try:
+        finish_data, finish_status_code = fetch_job_status(job_id, sched_host, sched_port, fields='job_health,result_root', timeout=30)
+        if finish_status_code != 200:
+            print(f"警告：请求 API 失败（HTTP状态码：{finish_status_code}）")
+
+        job_health = finish_data.get('job_health')
+        result_root = finish_data.get('result_root')
+    except json.JSONDecodeError as e:
+        print(f"JSON 解析错误：{e}，{poll_interval}秒后重试...")
     # 打印最终信息
-    if final_stage and final_data:
-        print(f"任务最终状态：{final_stage}")
-        print(f"任务完整信息：{json.dumps(final_data, indent=2)}")
+    if final_stage and job_health and result_root:
+        print(f"任务流程执行状态：job_stage = {final_stage}")
+        print(f"任务用例测试状态：job_health = {job_health}")
+        print(f"任务结果存放目录：result_root= {result_root}")
+    
+    # 获取并打印stats.json文件内容
+    print_step("步骤2", "获取stats.json文件内容")
+    try:
+        stats_data, stats_status = fetch_stats_json(host=sched_host,url=result_root)
+        if stats_status == 200:
+            print("stats.json文件内容：")
+            print(json.dumps(stats_data, indent=2, ensure_ascii=False))
+        else:
+            print(f"获取stats.json失败，HTTP状态码：{stats_status}")
+    except Exception as e:
+        print(f"获取stats.json时发生异常：{e}")
+    
 
 
 def wait_job_finish(

@@ -25,3 +25,4 @@ MY_EMAIL = "my_email@qq.com"
 JOB_YAML = "host-info.yaml"
 SCHED_PORT = 3000
 SCHED_HOST = "172.168.178.181"
+SRV_HTTP_PORT = 20007
