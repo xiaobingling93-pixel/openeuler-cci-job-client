@@ -26,3 +26,6 @@ JOB_YAML = "host-info.yaml"
 SCHED_PORT = 3000
 SCHED_HOST = "172.168.178.181"
 SRV_HTTP_PORT = 20007
+# 获取结果信息请求重试参数
+MAX_RETRIES = 3
+RETRY_DELAY = 5

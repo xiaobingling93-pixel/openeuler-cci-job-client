@@ -9,7 +9,7 @@ import json
 import argparse
 import requests
 
-from lib.constant import SCHED_HOST, SRV_HTTP_PORT
+from lib.constant import SCHED_HOST, SRV_HTTP_PORT, MAX_RETRIES, RETRY_DELAY
 
 
 def print_step(step: str, message: str) -> None:
@@ -179,12 +179,21 @@ def wait_job_status(
     # 获取并打印stats.json文件内容
     print_step("步骤2", "获取stats.json文件内容")
     try:
-        stats_data, stats_status = fetch_stats_json(host=sched_host,url=result_root)
-        if stats_status == 200:
-            print("stats.json文件内容：")
-            print(json.dumps(stats_data, indent=2, ensure_ascii=False))
-        else:
-            print(f"获取stats.json失败，HTTP状态码：{stats_status}")
+        max_retries = MAX_RETRIES
+        retry_delay = RETRY_DELAY  # 重试延迟秒数
+        
+        for attempt in range(max_retries):
+            stats_data, stats_status = fetch_stats_json(host=sched_host,url=result_root)
+            if stats_status == 200:
+                print("stats.json文件内容：")
+                print(json.dumps(stats_data, indent=2, ensure_ascii=False))
+                break
+            else:
+                if attempt < max_retries - 1:
+                    print(f"获取stats.json失败，HTTP状态码：{stats_status}，{retry_delay}秒后重试（第{attempt + 1}次重试）...")
+                    time.sleep(retry_delay)
+                else:
+                    print(f"获取stats.json失败，HTTP状态码：{stats_status}，已重试{max_retries}次")
     except Exception as e:
         print(f"获取stats.json时发生异常：{e}")
     
