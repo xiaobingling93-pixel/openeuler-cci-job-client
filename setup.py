@@ -33,6 +33,34 @@ def run_command(cmd: List[str], desc: str = "") -> bool:
         print(f"错误: 命令未找到，请确保系统已安装相应的包管理器")
         return False
 
+def check_package_installed(package: str) -> bool:
+    """
+    检查系统包是否已安装（适用于 Debian/Ubuntu）
+    """
+    try:
+        result = subprocess.run(['dpkg', '-s', package],
+                              capture_output=True, text=True, check=False)
+        return result.returncode == 0 and 'Status: install ok installed' in result.stdout
+    except FileNotFoundError:
+        # dpkg 不存在，使用 apt 检查
+        try:
+            result = subprocess.run(['apt', 'list', '--installed', package],
+                                  capture_output=True, text=True, check=False)
+            return package in result.stdout
+        except FileNotFoundError:
+            return False
+
+def check_gem_installed(gem: str) -> bool:
+    """
+    检查 Ruby gem 是否已安装
+    """
+    try:
+        result = subprocess.run(['gem', 'list', '-i', gem],
+                              capture_output=True, text=True, check=False)
+        return result.returncode == 0 and 'true' in result.stdout.lower()
+    except FileNotFoundError:
+        return False
+
 def detect_distribution() -> str:
     """
     检测操作系统发行版
@@ -74,20 +102,45 @@ def install_dependency_debian() -> bool:
     print("=== 在 Debian 系系统上安装依赖 ===")
     success = True
     
-    # 更新包列表
-    if not run_command(['apt-get', 'update'], "更新包列表"):
-        success = False
-    
-    # 安装系统包
+    # 安装系统包（先检查是否已安装）
     packages = ['cpio', 'git', 'ruby', 'gem', 'python3-pip', 'python3-requests']
-    if not run_command(['apt-get', 'install', '-y'] + packages, "安装系统包"):
-        success = False
+    packages_to_install = []
     
-    # 安装 Ruby gems
-    gems = ['rest-client', 'concurrent-ruby']
-    for gem in gems:
-        if not run_command(['gem', 'install', gem], f"安装 Ruby gem: {gem}"):
+    for pkg in packages:
+        if check_package_installed(pkg):
+            print(f"✓ 系统包 '{pkg}' 已安装，跳过")
+        else:
+            print(f"✗ 系统包 '{pkg}' 未安装，将安装")
+            packages_to_install.append(pkg)
+    
+    if packages_to_install:
+        # 更新包列表
+        print("检查并更新包列表...")
+        if not run_command(['apt-get', 'update'], "更新包列表"):
             success = False
+        print(f"安装缺失的系统包: {', '.join(packages_to_install)}")
+        if not run_command(['apt-get', 'install', '-y'] + packages_to_install, "安装系统包"):
+            success = False
+    else:
+        print("所有系统包均已安装，跳过系统包安装")
+    
+    # 安装 Ruby gems（先检查是否已安装）
+    gems = ['rest-client', 'concurrent-ruby']
+    gems_to_install = []
+    
+    for gem in gems:
+        if check_gem_installed(gem):
+            print(f"✓ Ruby gem '{gem}' 已安装，跳过")
+        else:
+            print(f"✗ Ruby gem '{gem}' 未安装，将安装")
+            gems_to_install.append(gem)
+    
+    if gems_to_install:
+        for gem in gems_to_install:
+            if not run_command(['gem', 'install', gem], f"安装 Ruby gem: {gem}"):
+                success = False
+    else:
+        print("所有 Ruby gems 均已安装，跳过 gem 安装")
     
     return success
 
