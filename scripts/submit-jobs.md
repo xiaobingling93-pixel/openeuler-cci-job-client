@@ -16,8 +16,8 @@ extra os_mount=initramfs 指定使用rootfs启动job
 mkdir -p /c/
 cd /c/
 REPOS=(
-	"/c/Jenkins-jobs|https://gitcode.com/Jenkins-jobs.git"
-    "/c/lkp-tests|https://gitcode.com/lkp-tests.git"
+	"/c/Jenkins-jobs|https://gitcode.com/cicd-sig/Jenkins-jobs.git"
+    "/c/lkp-tests|https://gitcode.com/cicd-sig/lkp-tests.git"
 )
 
 for item in "${REPOS[@]}"; do
