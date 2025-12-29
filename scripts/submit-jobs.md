@@ -35,6 +35,9 @@ for item in "${REPOS[@]}"; do
     echo "---"
 done
 
+timestamp=1766059721
+sched_host="172.168.177.42"
+sched_port=30100
 
 cd /c/Jenkins-jobs
 sudo apt install -y python3-requests
@@ -42,11 +45,11 @@ sudo python3 setup.py
 sudo python3 src/submit_wait_job.py \
 --os debian \
 --os_arch aarch64 \
---os_version 1766059721 \
+--os_version ${timestamp} \
 --testbox vm-2p8g \
 --job_yaml host-info.yaml \
---sched_host 172.168.177.42 \
---sched_port 30100 \
+--sched_host ${sched_host} \
+--sched_port ${sched_port} \
 --poll_interval 10 \
 --timeout 86400 \
 --extra os_mount=initramfs
