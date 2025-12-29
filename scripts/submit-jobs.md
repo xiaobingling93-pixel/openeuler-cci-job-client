@@ -1,14 +1,14 @@
 # 使用指导
 该脚本用户提交用户的测试用例的job，配置到jenkins的Configure -> Buid Steps -> Execute shell -> Command
 
-os debian 提交的job运行的系统
-os_arch aarch64 提交的job运行的系统的架构
-os_version 1766059721 提交的job运行的系统的版本，一般来自于制作rootfs时生成的版本
-sched_host 172.168.177.42 提交的job的compass-ci服务器的调度器对外的ip地址
-sched_port 30100 提交的job的compass-ci服务器的调度器对外的port
-poll_interval 10 轮询查看job的状态的时间，单位是秒
-timeout 86400 job运行的超时时间
-extra os_mount=initramfs 指定使用rootfs启动job
+os debian 提交的job运行的系统  
+os_arch aarch64 提交的job运行的系统的架构  
+os_version 1766059721 提交的job运行的系统的版本，一般来自于制作rootfs时生成的版本  
+sched_host 172.168.177.42 提交的job的compass-ci服务器的调度器对外的ip地址  
+sched_port 30100 提交的job的compass-ci服务器的调度器对外的port  
+poll_interval 10 轮询查看job的状态的时间，单位是秒  
+timeout 86400 job运行的超时时间  
+extra os_mount=initramfs 指定使用rootfs启动job  
 
 
 ```
