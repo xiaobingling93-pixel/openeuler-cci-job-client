@@ -36,6 +36,16 @@
 
 set -euo pipefail  # 开启严格模式：报错立即退出、未定义变量报错、管道错误传递
 
+# 启动default网络（如果已经启动则忽略错误，但继续执行）
+if ! virsh net-start default; then
+    echo "警告：default网络启动失败（可能已经启动或不存在），继续执行..."
+fi
+
+# 设置default网络开机自动启动（如果已经设置则忽略错误，但继续执行）
+if ! virsh net-autostart default; then
+    echo "警告：default网络自动启动设置失败（可能已经设置），继续执行..."
+fi
+
 # ===================== 配置项:可修改部分=====================
 # compass-ci服务器IP地址
 TARGET_IP="172.168.177.42"
