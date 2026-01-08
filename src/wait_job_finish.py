@@ -148,7 +148,7 @@ def wait_job_status(
             print(f"当前任务状态：{job_stage}")
             
             # 判断是否终止
-            if job_stage in ('finish', 'abort_invalid', 'abort_provider'):
+            if job_stage in ('finish', 'abort_invalid', 'abort_provider', 'abort_wait'):
                 final_data = data
                 final_stage = job_stage
                 print(f"任务已终止，状态：{job_stage}")
@@ -175,27 +175,28 @@ def wait_job_status(
         print(f"任务流程执行状态：job_stage = {final_stage}")
         print(f"任务用例测试状态：job_health = {job_health}")
         print(f"任务结果存放目录：result_root= {result_root}")
-    
-    # 获取并打印stats.json文件内容
-    print_step("步骤2", "获取stats.json文件内容")
-    try:
-        max_retries = MAX_RETRIES
-        retry_delay = RETRY_DELAY  # 重试延迟秒数
-        
-        for attempt in range(max_retries):
-            stats_data, stats_status = fetch_stats_json(host=sched_host,url=result_root)
-            if stats_status == 200:
-                print("stats.json文件内容：")
-                print(json.dumps(stats_data, indent=2, ensure_ascii=False))
-                break
-            else:
-                if attempt < max_retries - 1:
-                    print(f"获取stats.json失败，HTTP状态码：{stats_status}，{retry_delay}秒后重试（第{attempt + 1}次重试）...")
-                    time.sleep(retry_delay)
-                else:
-                    print(f"获取stats.json失败，HTTP状态码：{stats_status}，已重试{max_retries}次")
-    except Exception as e:
-        print(f"获取stats.json时发生异常：{e}")
+
+    if final_stage == 'finish':
+         # 获取并打印stats.json文件内容
+         print_step("步骤2", "获取stats.json文件内容")
+         try:
+             max_retries = MAX_RETRIES
+             retry_delay = RETRY_DELAY  # 重试延迟秒数
+
+             for attempt in range(max_retries):
+                 stats_data, stats_status = fetch_stats_json(host=sched_host,url=result_root)
+                 if stats_status == 200:
+                     print("stats.json文件内容：")
+                     print(json.dumps(stats_data, indent=2, ensure_ascii=False))
+                     break
+                 else:
+                     if attempt < max_retries - 1:
+                         print(f"获取stats.json失败，HTTP状态码：{stats_status}，{retry_delay}秒后重试（第{attempt + 1}次重试）...")
+                         time.sleep(retry_delay)
+                     else:
+                         print(f"获取stats.json失败，HTTP状态码：{stats_status}，已重试{max_retries}次")
+         except Exception as e:
+             print(f"获取stats.json时发生异常：{e}")
     
 
 
