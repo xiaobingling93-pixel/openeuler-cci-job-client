@@ -36,7 +36,7 @@ testbox=${testbox-"vm-2p8g"}
 cd /c/Jenkins-jobs
 sudo apt install -y python3-requests
 sudo python3 setup.py
-sudo python3 src/submit_wait_job.py \
+sudo python3 -u src/submit_wait_job.py \
 --os ${OS} \
 --os_arch ${ARCH} \
 --os_version ${TIMESTAMP} \
