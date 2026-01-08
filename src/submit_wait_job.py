@@ -99,6 +99,7 @@ def main():
         print_step("步骤1", "提交 LKP 作业")
         # 解析 extra 参数
         extra_params = parse_extra_params(args.extra) if args.extra else None
+        print(f"the extra params: {extra_params}")
         
         job_id = submit_job(
             os_name=args.os,

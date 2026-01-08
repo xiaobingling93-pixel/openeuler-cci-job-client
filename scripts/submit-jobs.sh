@@ -32,6 +32,9 @@ job_yaml=${job_yaml-"host-info.yaml"}
 OS=${OS-"debian"}
 ARCH=${ARCH-"aarch64"}
 testbox=${testbox-"vm-2p8g"}
+timeout=${timeout-86400}
+poll_interval=${poll_interval-10}
+extra=${extra-"os_mount=initramfs"}
 
 cd /c/Jenkins-jobs
 sudo apt install -y python3-requests
@@ -44,6 +47,6 @@ sudo python3 -u src/submit_wait_job.py \
 --job_yaml ${job_yaml} \
 --sched_host ${sched_host} \
 --sched_port ${sched_port} \
---poll_interval 10 \
---timeout 86400 \
---extra os_mount=initramfs
+--poll_interval ${poll_interval} \
+--timeout ${timeout} \
+--extra "${extra}"
