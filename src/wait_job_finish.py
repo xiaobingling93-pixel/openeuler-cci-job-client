@@ -176,6 +176,9 @@ def wait_job_status(
         print(f"任务用例测试状态：job_health = {job_health}")
         print(f"任务结果存放目录：result_root= {result_root}")
 
+    if final_stage == 'abort_invalid' or final_stage == 'abort_provider' or final_stage == 'abort_wait':
+        sys.exit(1)
+
     if final_stage == 'finish':
          # 获取并打印stats.json文件内容
          print_step("步骤2", "获取stats.json文件内容")
@@ -197,7 +200,7 @@ def wait_job_status(
                          print(f"获取stats.json失败，HTTP状态码：{stats_status}，已重试{max_retries}次")
          except Exception as e:
              print(f"获取stats.json时发生异常：{e}")
-    
+
 
 
 def wait_job_finish(
