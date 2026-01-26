@@ -54,53 +54,6 @@ def fetch_job_status(
     data = resp.json() if resp.content else {}
     return data, resp.status_code
 
-
-def fetch_stats_json(
-    host: str = None,
-    port: int = None,
-    url: str = None,
-    timeout: int = 30
-) -> tuple[dict, int]:
-    """
-    获取stats.json文件的网络请求方法。
-
-    Args:
-        host: 服务器主机，如果为None则使用constant中的SCHED_HOST
-        port: 服务器端口，如果为None则使用constant中的SRV_HTTP_PORT
-        timeout: 请求超时时间（秒），默认为30秒
-
-    Returns:
-        包含响应数据和状态码的元组 (data, status_code)
-
-    Raises:
-        requests.exceptions.RequestException: 网络请求异常
-        json.JSONDecodeError: JSON解析异常
-    """
-    # 使用默认值
-    if host is None:
-        host = SCHED_HOST
-    if port is None:
-        port = SRV_HTTP_PORT
-    
-    # 构建URL路径
-    url_path = url+"/stats.json"
-    api_url = f"http://{host}:{port}{url_path}"
-    
-    try:
-        resp = requests.get(api_url, timeout=timeout)
-        if resp.status_code == 200:
-            data = resp.json() if resp.content else {}
-            return data, resp.status_code
-        else:
-            return {}, resp.status_code
-    except requests.exceptions.RequestException as e:
-        print(f"请求stats.json异常：{e}")
-        raise
-    except json.JSONDecodeError as e:
-        print(f"JSON解析错误：{e}")
-        raise
-
-
 def wait_job_status(
     job_id: str,
     sched_host: str,
@@ -180,28 +133,8 @@ def wait_job_status(
         sys.exit(1)
 
     if final_stage == 'finish':
-         # 获取并打印stats.json文件内容
-         print_step("步骤2", "获取stats.json文件内容")
-         try:
-             max_retries = MAX_RETRIES
-             retry_delay = RETRY_DELAY  # 重试延迟秒数
-
-             for attempt in range(max_retries):
-                 stats_data, stats_status = fetch_stats_json(host=sched_host,url=result_root)
-                 if stats_status == 200:
-                     print("stats.json文件内容：")
-                     print(json.dumps(stats_data, indent=2, ensure_ascii=False))
-                     break
-                 else:
-                     if attempt < max_retries - 1:
-                         print(f"获取stats.json失败，HTTP状态码：{stats_status}，{retry_delay}秒后重试（第{attempt + 1}次重试）...")
-                         time.sleep(retry_delay)
-                     else:
-                         print(f"获取stats.json失败，HTTP状态码：{stats_status}，已重试{max_retries}次")
-         except Exception as e:
-             print(f"获取stats.json时发生异常：{e}")
-
-
+        print("测试套执行结果归档链接：")
+        print(f"http://{sched_host}:{SRV_HTTP_PORT}{result_root}")
 
 def wait_job_finish(
     job_id: str,
