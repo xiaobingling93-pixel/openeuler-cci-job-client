@@ -129,7 +129,7 @@ def submit_one_yaml(
     if not submit_cmd.exists():
         die(f"提交命令不存在: {submit_cmd}")
     
-    cmd = [str(submit_cmd)] + params + [job_yaml]
+    cmd = [str(submit_cmd)] + [job_yaml] + params
     print(f"执行命令: {' '.join(cmd)}")
     print(f"工作目录: {os.getcwd()}")
     
