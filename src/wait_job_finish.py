@@ -129,7 +129,7 @@ def wait_job_status(
         print(f"任务用例测试状态：job_health = {job_health}")
         print(f"任务结果存放目录：result_root= {result_root}")
 
-    if final_stage == 'abort_invalid' or final_stage == 'abort_provider' or final_stage == 'abort_wait':
+    if final_stage == 'abort_invalid' or final_stage == 'abort_provider' or final_stage == 'abort_wait' or job_health != 'success':
         sys.exit(1)
 
     if final_stage == 'finish':
