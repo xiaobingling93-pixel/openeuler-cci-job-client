@@ -9,6 +9,8 @@ submit_wait_job.py - 提交 LKP 作业并等待其完成
 
 import sys
 import argparse
+import time
+
 from submit_job import submit_job
 from wait_job_finish import wait_job_finish
 from lib.constant import (
@@ -119,7 +121,7 @@ def main():
         print(f"作业提交成功，job_id = {job_id}")
 
         # 步骤2：等待作业完成
-        print_step("步骤2", f"等待作业 {job_id} 完成")
+        print_step("步骤4", f"等待作业 {job_id} 完成")
         wait_job_finish(
             job_id=job_id,
             sched_host=args.sched_host,
