@@ -172,11 +172,10 @@ python3 src/wait_job_finish.py \
 ============================================================
 步骤1: 轮询任务状态，API: http://172.168.178.181:3000/scheduler/v1/jobs/123456?fields=job_stage
 ============================================================
-当前任务状态：running
-当前任务状态：running
-当前任务状态：finish
-任务已终止，状态：finish
-任务最终状态：finish
+当前任务:lmbench,任务id：xxxxx，任务状态：running
+当前任务:lmbench,任务id：xxxxx，任务状态：running
+当前任务:lmbench,任务id：xxxxx，任务状态：finish
+lmbench:xxxxx任务已结束，状态：finish
 任务完整信息：{...}
 ```
 

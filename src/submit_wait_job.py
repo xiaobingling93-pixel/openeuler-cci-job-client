@@ -93,6 +93,7 @@ def main():
     # wait_job_finish 参数
     parser.add_argument('--poll_interval', type=int, default=10, help='轮询间隔（秒）(默认: 10)')
     parser.add_argument('--timeout', type=int, default=86400, help='最长等待时间（秒），默认24小时（86400秒）')
+    parser.add_argument("--logs_dir", help='指定这个参数后，用例执行完的日志会从compass-ci服务器回传到该目录下')
 
     args = parser.parse_args()
 
@@ -127,7 +128,8 @@ def main():
             sched_host=args.sched_host,
             sched_port=args.sched_port,
             poll_interval=args.poll_interval,
-            timeout=args.timeout
+            timeout=args.timeout,
+            logs_dir=args.logs_dir
         )
 
         print_step("完成", "作业处理完毕")

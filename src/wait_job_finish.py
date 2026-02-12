@@ -8,8 +8,9 @@ import time
 import json
 import argparse
 import requests
+import subprocess
 
-from lib.constant import SCHED_HOST, SRV_HTTP_PORT, MAX_RETRIES, RETRY_DELAY
+from lib.constant import SRV_HTTP_PORT
 
 
 def print_step(step: str, message: str) -> None:
@@ -95,7 +96,7 @@ def query_jobs(job_id, sched_host, sched_port, timeout, poll_interval):
 
             # 判断是否终止
             if job_stage in ('finish', 'abort_invalid', 'abort_provider', 'abort_wait'):
-                print(f"{job_suite}:{job_id}任务已终止，状态：{job_stage}")
+                print(f"{job_suite}:{job_id}任务已结束，状态：{job_stage}")
                 break
 
         except requests.exceptions.RequestException as e:
@@ -111,7 +112,8 @@ def wait_job_status(
     sched_host: str,
     sched_port: int,
     poll_interval: int = 10,
-    timeout: int = 86400
+    timeout: int = 86400,
+    logs_dir: str = None
 ) -> None:
     """
     轮询任务状态直到完成或中止。
@@ -122,6 +124,7 @@ def wait_job_status(
         sched_port: 调度器端口
         poll_interval: 轮询间隔（秒）
         timeout: 最长等待时间（秒），默认24小时（86400秒）
+        logs_dir: 回传日志的目的目录
     """
     if not job_id:
         die("错误：未设置 job_id 变量")
@@ -143,10 +146,18 @@ def wait_job_status(
         print(f"{job_suite}任务流程执行状态：job_stage = {final_stage}")
         print(f"{job_suite}任务用例测试状态：job_health = {job_health}")
         print(f"{job_suite}任务结果存放目录：result_root= {result_root}")
-
-    if final_stage == 'finish':
         print(f"{job_suite}测试套执行结果归档链接：")
         print(f"http://{sched_host}:{SRV_HTTP_PORT}{result_root}")
+        if logs_dir:
+            print(f"用例日志将从compass-ci:{sched_host}的/srv{result_root}回传到{logs_dir}")
+            cmd = [ "rsync", "-avz", "--progress", f"root@{sched_host}:/srv{result_root}", f"{logs_dir}" ]
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                if result.returncode != 0:
+                    print(f"用例日志回传失败：{result.stdout.strip()}:{result.stderr}")
+            except Exception as e:
+                print(f"用例日志回传出现异常：{e}")
+
 
     if final_stage == 'abort_invalid' or final_stage == 'abort_provider' or final_stage == 'abort_wait' or job_health != 'success':
         sys.exit(1)
@@ -156,7 +167,8 @@ def wait_job_finish(
     sched_host: str = '172.168.178.181',
     sched_port: int = 3000,
     poll_interval: int = 10,
-    timeout: int = 86400
+    timeout: int = 86400,
+    logs_dir: str = None
 ) -> None:
     """
     等待作业完成的主函数。
@@ -167,8 +179,9 @@ def wait_job_finish(
         sched_port: 调度器端口
         poll_interval: 轮询间隔（秒）
         timeout: 最长等待时间（秒），默认24小时（86400秒）
+        logs_dir: 回传日志的目的目录
     """
-    wait_job_status(job_id, sched_host, sched_port, poll_interval, timeout)
+    wait_job_status(job_id, sched_host, sched_port, poll_interval, timeout, logs_dir)
 
 
 def main():

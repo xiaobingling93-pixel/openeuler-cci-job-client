@@ -1,28 +1,4 @@
 #!/bin/bash
-#==============Jenkin执行的shell==============
-#mkdir -p /c/
-#cd /c/
-#REPOS=(
-#        "/c/Jenkins-jobs|https://gitcode.com/cicd-sig/Jenkins-jobs.git"
-#    "/c/lkp-tests|https://gitcode.com/cicd-sig/lkp-tests.git"
-#)
-#
-#for item in "${REPOS[@]}"; do
-#    DIR="${item%%|*}"
-#    URL="${item##*|}"
-#    echo "处理: $DIR"
-#    if [ -d "$DIR" ]; then
-#        echo "  git pull $DIR..."
-#        cd "$DIR" && git pull && cd -
-#    else
-#        echo " git clone $URL to $DIR..."
-#        git clone "$URL" "$DIR"
-#    fi
-#    echo "done: $DIR"
-#    echo "---"
-#done
-#cd /c/Jenkins-jobs/scripts
-#bash -x submit-jobs.sh
 
 #==============Jenkin配置的变量==============
 TIMESTAMP=${TIMESTAMP-"202512111800"}
@@ -36,6 +12,9 @@ timeout=${timeout-86400}
 poll_interval=${poll_interval-10}
 extra=${extra-"os_mount=initramfs"}
 
+testcase_logs_dir=$(sudo mktemp -d -p "/tmp/testcase_logs" "XXXXXX")
+echo "当前执行用户：$(whoami)"
+echo "the testcase is ${job_yaml}, and the logs dir is ${testcase_logs_dir}"
 cd /c/Jenkins-jobs
 sudo apt install -y python3-requests
 sudo python3 setup.py
@@ -49,4 +28,16 @@ sudo python3 -u src/submit_wait_job.py \
 --sched_port ${sched_port} \
 --poll_interval ${poll_interval} \
 --timeout ${timeout} \
---extra "${extra}"
+--extra "${extra}" \
+--logs_dir ${testcase_logs_dir}
+
+if [ -n "$PF_KEY" ];then
+    krb5file="FILE:/tmp/krb5cc_tmppf"
+    source kinit.sh
+    echo "需要归档用例日志到文件服务器"
+    sudo KRB5CCNAME="$krb5file" ssh tiger@$FILESERVER_IPv6 mkdir -p $FILESERVER_DIR/$BRANCH/$TIMESTAMP/testcase_logs/
+    sudo KRB5CCNAME="$krb5file" scp -r ${testcase_logs_dir}/* tiger@[$FILESERVER_IPv6]:$FILESERVER_DIR/$BRANCH/$TIMESTAMP/testcase_logs/
+else
+    echo "无需归档用例日志到文件服务器"
+fi
+sudo rm -rf ${testcase_logs_dir}
