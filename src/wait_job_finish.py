@@ -6,23 +6,33 @@ wait_job_finish.py - 轮询 LKP 作业状态直到完成
 import sys
 import time
 import json
+import os
 import argparse
 import requests
 import subprocess
+import logging.config
 
+from pathlib import Path
 from lib.constant import SRV_HTTP_PORT
 
+if not logging.getLogger().hasHandlers():
+    os.makedirs('logs', exist_ok=True)
+    logger_config = os.path.join(str(Path(__file__).parent.parent), 'config', 'logger.conf')
+    print(f"logger_config: {logger_config}")
+    logging.config.fileConfig(logger_config, encoding="utf-8")
+
+logger = logging.getLogger("common")
 
 def print_step(step: str, message: str) -> None:
     """打印步骤信息"""
-    print("=" * 60)
-    print(f"{step}: {message}")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info(f"{step}: {message}")
+    logger.info("=" * 60)
 
 
 def die(msg: str) -> None:
     """输出错误并退出"""
-    print(f"错误: {msg}", file=sys.stderr)
+    logger.error(f"错误: {msg}")
     sys.exit(1)
 
 
@@ -72,7 +82,7 @@ def query_jobs(job_id, sched_host, sched_port, timeout, poll_interval):
             else:
                 data, status_code = fetch_job_status(job_id, sched_host, sched_port, timeout=30)
             if status_code != 200:
-                print(f"警告：请求 API 失败（HTTP状态码：{status_code}），{poll_interval}秒后重试...")
+                logger.warning(f"警告：请求 API 失败（HTTP状态码：{status_code}），{poll_interval}秒后重试...")
                 time.sleep(poll_interval)
                 continue
             job_stage = data.get('job_stage')
@@ -81,28 +91,28 @@ def query_jobs(job_id, sched_host, sched_port, timeout, poll_interval):
                 wait_job = data.get('wait_on')
                 if wait_job:
                     pre_job_id = list(wait_job.keys())[0]
-                    print(f"{job_suite}:{job_id}存在前置任务{pre_job_id}, 需查询并等到前置任务结束")
+                    logger.info(f"{job_suite}:{job_id}存在前置任务{pre_job_id}, 需查询并等到前置任务结束")
                     _, pre_job_suite = query_jobs(pre_job_id, sched_host, sched_port, timeout, poll_interval)
                     result_data, _ = fetch_job_status(pre_job_id, sched_host, sched_port,
                                                                        fields='result_root', timeout=30)
                     result_root = result_data.get('result_root')
-                    print(f"{pre_job_suite}:{pre_job_id}执行结果归档链接：")
-                    print(f"http://{sched_host}:{SRV_HTTP_PORT}{result_root}")
+                    logger.info(f"{pre_job_suite}:{pre_job_id}执行结果归档链接：")
+                    logger.info(f"http://{sched_host}:{SRV_HTTP_PORT}{result_root}")
                 else:
-                    print(f"{job_suite}:{job_id}不存在前置任务")
+                    logger.info(f"{job_suite}:{job_id}不存在前置任务")
                 pre_job_query_flag = True
 
-            print(f"当前任务:{job_suite},任务id:{job_id},任务状态：{job_stage}")
+            logger.info(f"当前任务:{job_suite},任务id:{job_id},任务状态：{job_stage}")
 
             # 判断是否终止
             if job_stage in ('finish', 'abort_invalid', 'abort_provider', 'abort_wait'):
-                print(f"{job_suite}:{job_id}任务已结束，状态：{job_stage}")
+                logger.info(f"{job_suite}:{job_id}任务已结束，状态：{job_stage}")
                 break
 
         except requests.exceptions.RequestException as e:
-            print(f"请求异常：{e}，{poll_interval}秒后重试...")
+            logger.error(f"请求异常：{e}，{poll_interval}秒后重试...")
         except json.JSONDecodeError as e:
-            print(f"JSON 解析错误：{e}，{poll_interval}秒后重试...")
+            logger.error(f"JSON 解析错误：{e}，{poll_interval}秒后重试...")
 
         time.sleep(poll_interval)
     return job_stage, job_suite
@@ -129,34 +139,34 @@ def wait_job_status(
     if not job_id:
         die("错误：未设置 job_id 变量")
     
-    print("轮询任务状态")
+    logger.info("轮询任务状态")
     final_stage, job_suite = query_jobs(job_id, sched_host, sched_port, timeout, poll_interval)
 
     try:
         finish_data, finish_status_code = fetch_job_status(job_id, sched_host, sched_port, fields='job_health,result_root', timeout=30)
         if finish_status_code != 200:
-            print(f"警告：请求 API 失败（HTTP状态码：{finish_status_code}）")
+            logger.warning(f"警告：请求 API 失败（HTTP状态码：{finish_status_code}）")
 
         job_health = finish_data.get('job_health')
         result_root = finish_data.get('result_root')
     except json.JSONDecodeError as e:
-        print(f"JSON 解析错误：{e}，{poll_interval}秒后重试...")
+        logger.error(f"JSON 解析错误：{e}，{poll_interval}秒后重试...")
     # 打印最终信息
     if final_stage and job_health and result_root:
-        print(f"{job_suite}任务流程执行状态：job_stage = {final_stage}")
-        print(f"{job_suite}任务用例测试状态：job_health = {job_health}")
-        print(f"{job_suite}任务结果存放目录：result_root= {result_root}")
-        print(f"{job_suite}测试套执行结果归档链接：")
-        print(f"http://{sched_host}:{SRV_HTTP_PORT}{result_root}")
+        logger.info(f"{job_suite}任务流程执行状态：job_stage = {final_stage}")
+        logger.info(f"{job_suite}任务用例测试状态：job_health = {job_health}")
+        logger.info(f"{job_suite}任务结果存放目录：result_root= {result_root}")
+        logger.info(f"{job_suite}测试套执行结果归档链接：")
+        logger.info(f"http://{sched_host}:{SRV_HTTP_PORT}{result_root}")
         if logs_dir:
-            print(f"用例日志将从compass-ci:{sched_host}的/srv{result_root}回传到{logs_dir}")
+            logger.info(f"用例日志将从compass-ci:{sched_host}的/srv{result_root}回传到{logs_dir}")
             cmd = [ "rsync", "-avz", "--progress", f"root@{sched_host}:/srv{result_root}", f"{logs_dir}" ]
             try:
                 result = subprocess.run(cmd, capture_output=True, text=True, check=True)
                 if result.returncode != 0:
-                    print(f"用例日志回传失败：{result.stdout.strip()}:{result.stderr}")
+                    logger.error(f"用例日志回传失败：{result.stdout.strip()}:{result.stderr}")
             except Exception as e:
-                print(f"用例日志回传出现异常：{e}")
+                logger.error(f"用例日志回传出现异常：{e}")
 
 
     if final_stage == 'abort_invalid' or final_stage == 'abort_provider' or final_stage == 'abort_wait' or job_health != 'success':
@@ -221,10 +231,10 @@ def main():
             timeout=args.timeout
         )
     except KeyboardInterrupt:
-        print("\n\n用户中断", file=sys.stderr)
+        logger.warning("\n\n用户中断", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"错误: {e}", file=sys.stderr)
+        logger.error(f"错误: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         sys.exit(1)

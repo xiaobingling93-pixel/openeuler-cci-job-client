@@ -9,8 +9,11 @@ submit_wait_job.py - 提交 LKP 作业并等待其完成
 
 import sys
 import argparse
-import time
+import os
+import logging
+import logging.config
 
+from pathlib import Path
 from submit_job import submit_job
 from wait_job_finish import wait_job_finish
 from lib.constant import (
@@ -28,12 +31,21 @@ from lib.constant import (
 )
 from lib.parse_params_utils import parse_extra_params
 
+def init_logger():
+    os.makedirs('logs', exist_ok=True)
+    logger_config = os.path.join(str(Path(__file__).parent.parent), 'config','logger.conf')
+    print(f"logger_config: {logger_config}")
+    logging.config.fileConfig(logger_config, encoding="utf-8")
+    return logging.getLogger('common')
+
+logger = init_logger()
+
 
 def print_step(step: str, message: str) -> None:
     """打印步骤信息"""
-    print("=" * 60)
-    print(f"{step}: {message}")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info(f"{step}: {message}")
+    logger.info("=" * 60)
 
 
 
@@ -102,7 +114,7 @@ def main():
         print_step("步骤1", "提交 LKP 作业")
         # 解析 extra 参数
         extra_params = parse_extra_params(args.extra) if args.extra else None
-        print(f"the extra params: {extra_params}")
+        logger.debug(f"the extra params: {extra_params}")
         
         job_id = submit_job(
             os_name=args.os,
@@ -119,7 +131,7 @@ def main():
             skip_prepare=args.skip_prepare,
             extra_params=extra_params
         )
-        print(f"作业提交成功，job_id = {job_id}")
+        logger.info(f"作业提交成功，job_id = {job_id}")
 
         # 步骤2：等待作业完成
         print_step("步骤4", f"等待作业 {job_id} 完成")
@@ -136,10 +148,10 @@ def main():
         sys.exit(0)
 
     except KeyboardInterrupt:
-        print("\n\n用户中断", file=sys.stderr)
+        logger.warning("\n\n用户中断", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"错误: {e}", file=sys.stderr)
+        logger.error(f"错误: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         sys.exit(1)

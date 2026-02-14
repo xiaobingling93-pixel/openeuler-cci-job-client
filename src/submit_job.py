@@ -8,6 +8,7 @@ import os
 import subprocess
 import re
 import argparse
+import logging.config
 from pathlib import Path
 from typing import Optional, List
 from lib.constant import (
@@ -28,20 +29,24 @@ from lib.constant import (
 from lib.parse_params_utils import parse_extra_params
 
 
+if not logging.getLogger().hasHandlers():
+    os.makedirs('logs', exist_ok=True)
+    logger_config = os.path.join(str(Path(__file__).parent.parent), 'config', 'logger.conf')
+    print(f"logger_config: {logger_config}")
+    logging.config.fileConfig(logger_config, encoding="utf-8")
+
+logger = logging.getLogger("common")
+
 def print_step(step: str, message: str) -> None:
     """打印步骤信息"""
-    print("=" * 60)
-    print(f"{step}: {message}")
-    print("=" * 60)
-
+    logger.info("=" * 60)
+    logger.info(f"{step}: {message}")
+    logger.info("=" * 60)
 
 def die(msg: str) -> None:
     """输出错误并退出"""
-    print(f"错误: {msg}", file=sys.stderr)
+    logger.error(f"错误: {msg}")
     sys.exit(1)
-
-
-
 
 def prepare_lkp_client(cci_repos: str = CCI_REPOS) -> Path:
     """
@@ -57,7 +62,7 @@ def prepare_lkp_client(cci_repos: str = CCI_REPOS) -> Path:
     # 克隆 lkp-tests
     lkp_tests_path = cci_path / "lkp-tests"
     if not lkp_tests_path.exists():
-        print("克隆 lkp-tests 仓库...")
+        logger.info("克隆 lkp-tests 仓库...")
         result = subprocess.run(
             ['git', 'clone', 'https://gitee.com/compass-ci/lkp-tests.git'],
             capture_output=True, text=True
@@ -65,10 +70,10 @@ def prepare_lkp_client(cci_repos: str = CCI_REPOS) -> Path:
         if result.returncode != 0:
             die(f"克隆 lkp-tests git 仓库失败: {result.stderr}")
     else:
-        print("lkp-tests 已存在，跳过克隆")
+        logger.info("lkp-tests 已存在，跳过克隆")
     
     lkp_src = lkp_tests_path
-    print(f"LKP_SRC 路径为 {lkp_src}")
+    logger.info(f"LKP_SRC 路径为 {lkp_src}")
     return lkp_src
 
 
@@ -89,9 +94,6 @@ def submit_one_yaml(
 ) -> str:
     """
     提交一个 YAML 作业，返回提交输出。
-
-    Args:
-        extra_params: 额外的键值对参数列表，格式为 "key=value"
     """
     print_step("步骤3", f"提交作业 {job_yaml}")
     
@@ -116,13 +118,13 @@ def submit_one_yaml(
         params.extend(extra_params)
     
     # 打印参数以便调试
-    print("命令行参数:")
+    logger.debug("命令行参数:")
     for param in params:
         # 隐藏 token 的完整值
         if param.startswith("my_token="):
-            print(f"  my_token=****")
+            logger.info(f"  my_token=****")
         else:
-            print(f"  {param}")
+            logger.info(f"  {param}")
     
     # 执行提交命令
     submit_cmd = lkp_src / "sbin" / "submit"
@@ -130,8 +132,8 @@ def submit_one_yaml(
         die(f"提交命令不存在: {submit_cmd}")
     
     cmd = [str(submit_cmd)] + [job_yaml] + params
-    print(f"执行命令: {' '.join(cmd)}")
-    print(f"工作目录: {os.getcwd()}")
+    logger.debug(f"执行命令: {' '.join(cmd)}")
+    logger.debug(f"工作目录: {os.getcwd()}")
     
     # 仍然需要 LKP_SRC 环境变量，因为 submit 脚本可能依赖它
     env = os.environ.copy()
@@ -148,7 +150,7 @@ def submit_one_yaml(
     if result.returncode != 0:
         die(f"提交失败: {result.stderr}")
     
-    print(f"提交后返回的信息: {out}")
+    logger.debug(f"提交后返回的信息: {out}")
     return out
 
 
@@ -174,7 +176,7 @@ def get_job_id(submit_output: str) -> str:
     if not job_id:
         die("提交任务失败，未找到 job_id")
     
-    print(f"提交任务成功，job id = {job_id}")
+    logger.info(f"提交任务成功，job id = {job_id}")
     return job_id
 
 
@@ -308,12 +310,12 @@ def main():
             extra_params=extra_params
         )
         # 输出 job_id，便于管道捕获
-        print(job_id)
+        logger.info(job_id)
     except KeyboardInterrupt:
-        print("\n\n用户中断", file=sys.stderr)
+        logger.warning("\n\n用户中断", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"错误: {e}", file=sys.stderr)
+        logger.error(f"错误: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         sys.exit(1)
