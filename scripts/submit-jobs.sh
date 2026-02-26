@@ -12,7 +12,11 @@ timeout=${timeout-86400}
 poll_interval=${poll_interval-10}
 extra=${extra-"os_mount=initramfs"}
 
-testcase_logs_dir=$(sudo mktemp -d -p "/tmp/testcase_logs" "XXXXXX")
+testcase_dir="tmp/testcase_logs"
+if [ ! -d "${testcase_dir}" ];then
+  sudo mkdir -p ${testcase_dir}
+fi
+testcase_logs_dir=$(sudo mktemp -d -p "${testcase_dir}" "XXXXXX")
 echo "当前执行用户：$(whoami)"
 echo "the testcase is ${job_yaml}, and the logs dir is ${testcase_logs_dir}"
 cd /c/Jenkins-jobs
