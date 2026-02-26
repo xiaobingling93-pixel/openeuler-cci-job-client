@@ -44,4 +44,6 @@ if [ -n "$PF_KEY" ];then
 else
     echo "无需归档用例日志到文件服务器"
 fi
-sudo rm -rf ${testcase_logs_dir}
+if [ -d "${testcase_logs_dir}" ];then
+  sudo rm -rf "${testcase_logs_dir}"
+fi
