@@ -35,15 +35,10 @@ sudo python3 -u src/submit_wait_job.py \
 --extra "${extra}" \
 --logs_dir ${testcase_logs_dir}
 
-if [ -n "$PF_KEY" ];then
-    krb5file="FILE:/tmp/krb5cc_tmppf"
-    source kinit.sh
-    echo "需要归档用例日志到文件服务器"
-    sudo KRB5CCNAME="$krb5file" ssh tiger@$FILESERVER_IPv6 mkdir -p $FILESERVER_DIR/$BRANCH/$TIMESTAMP/testcase_logs/
-    sudo KRB5CCNAME="$krb5file" scp -r ${testcase_logs_dir}/* tiger@[$FILESERVER_IPv6]:$FILESERVER_DIR/$BRANCH/$TIMESTAMP/testcase_logs/
-else
-    echo "无需归档用例日志到文件服务器"
-fi
+#放到workspace下面，方便归档到字节文件服务器
+mkdir -p ${WORKSPACE}/testcase_logs/
+cp -a ${testcase_logs_dir}/* ${WORKSPACE}/testcase_logs/
+
 if [ -d "${testcase_logs_dir}" ];then
   sudo rm -rf "${testcase_logs_dir}"
 fi
