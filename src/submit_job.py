@@ -64,7 +64,7 @@ def prepare_lkp_client(cci_repos: str = CCI_REPOS) -> Path:
     if not lkp_tests_path.exists():
         logger.info("克隆 lkp-tests 仓库...")
         result = subprocess.run(
-            ['git', 'clone', 'https://gitee.com/compass-ci/lkp-tests.git'],
+            ['git', 'clone', 'https://gitcode.com/cicd-sig/lkp-tests.git'],
             capture_output=True, text=True
         )
         if result.returncode != 0:
