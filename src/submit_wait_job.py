@@ -1,10 +1,23 @@
 #!/usr/bin/env python3
+# -*- encoding=utf-8 -*-
 """
-submit_wait_job.py - 提交 LKP 作业并等待其完成
-
-组合 submit_job.py 和 wait_job_finish.py 的功能：
-1. 提交作业并获取 job_id
-2. 轮询作业状态直到完成或超时
+# **********************************************************************************
+# Copyright (c) Huawei Technologies Co., Ltd. 2020-2020. All rights reserved.
+# [openeuler-jenkins] is licensed under the Mulan PSL v2.
+# You can use this software according to the terms and conditions of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#          http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# Author:
+# Create: 2026-03-06
+# Description: 提交 LKP 作业并等待其完成
+# 组合 submit_job.py 和 wait_job_finish.py 的功能：
+# 1. 提交作业并获取 job_id
+# 2. 轮询作业状态直到完成或超时
+# **********************************************************************************
 """
 
 import sys
