@@ -19,7 +19,9 @@ fi
 testcase_logs_dir=$(sudo mktemp -d -p "${testcase_dir}" "XXXXXX")
 echo "当前执行用户：$(whoami)"
 echo "the testcase is ${job_yaml}, and the logs dir is ${testcase_logs_dir}"
-cd /c/Jenkins-jobs
+script_cur_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+parent2dir=$(dirname "$script_cur_dir")
+cd ${parent2dir}
 sudo apt install -y python3-requests
 sudo python3 setup.py
 sudo python3 -u src/submit_wait_job.py \
