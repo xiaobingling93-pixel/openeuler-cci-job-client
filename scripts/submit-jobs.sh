@@ -12,7 +12,7 @@ timeout=${timeout-86400}
 poll_interval=${poll_interval-10}
 extra=${extra-"os_mount=initramfs"}
 
-testcase_dir="tmp/testcase_logs"
+testcase_dir="${WORKSPACE}/tmp/testcase_logs"
 if [ ! -d "${testcase_dir}" ];then
   sudo mkdir -p ${testcase_dir}
 fi
