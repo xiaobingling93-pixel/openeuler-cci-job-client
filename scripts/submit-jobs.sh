@@ -35,9 +35,11 @@ sudo python3 -u src/submit_wait_job.py \
 --extra "${extra}" \
 --logs_dir ${testcase_logs_dir}
 
-#放到workspace下面，方便归档到字节文件服务器
-mkdir -p ${WORKSPACE}/testcase_logs/
-cp -a ${testcase_logs_dir}/* ${WORKSPACE}/testcase_logs/
+#放到workspace下面，方便归档到文件服务器
+if [ -n "$(ls -A "${testcase_logs_dir}")" ];then
+  mkdir -p "${WORKSPACE}"/testcase_logs/
+  cp -a "${testcase_logs_dir}"/. "${WORKSPACE}"/testcase_logs/
+fi
 
 if [ -d "${testcase_logs_dir}" ];then
   sudo rm -rf "${testcase_logs_dir}"
