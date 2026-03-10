@@ -20,7 +20,7 @@
 from pathlib import Path
 
 # CCI 仓库根目录，默认为 /c
-CCI_REPOS = "/c"
+CCI_REPOS = "$WORKSPACE/c"
 
 # LKP 源代码路径，默认为 /c/lkp-tests
 LKP_SRC_PATH = Path(CCI_REPOS) / "lkp-tests"
