@@ -16,11 +16,15 @@
 # Description: 定义项目中使用的常量，便于统一管理和修改。
 # **********************************************************************************
 """
-
+import os
 from pathlib import Path
 
 # CCI 仓库根目录
-CCI_REPOS = "$WORKSPACE/c"
+WORKSPACE = os.environ.get("WORKSPACE")
+if WORKSPACE:
+    CCI_REPOS = os.path.join(WORKSPACE, "c")
+else:
+    CCI_REPOS = "/c"
 
 # LKP 源代码路径
 LKP_SRC_PATH = Path(CCI_REPOS) / "lkp-tests"

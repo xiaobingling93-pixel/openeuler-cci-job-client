@@ -26,7 +26,7 @@ parent_dir=$(dirname "$script_cur_dir")
 cd ${parent_dir}
 sudo apt install -y python3-requests
 sudo python3 setup.py
-sudo python3 -u src/submit_wait_job.py \
+python3 -u src/submit_wait_job.py \
 --os ${OS} \
 --os_arch ${ARCH} \
 --os_version ${TIMESTAMP} \
