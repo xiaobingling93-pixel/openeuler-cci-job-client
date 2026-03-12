@@ -43,6 +43,7 @@ from lib.constant import (
     SCHED_HOST,
 )
 from lib.parse_params_utils import parse_extra_params
+from lib.parse_tbox_spec import get_available_testboxes, return_machines
 
 def init_logger():
     os.makedirs('logs', exist_ok=True)
@@ -113,6 +114,9 @@ def main():
     parser.add_argument('--sched_port', type=int, default=SCHED_PORT, help='调度器端口 (默认: 3000)')
     parser.add_argument('--sched_host', default=SCHED_HOST, help='调度器主机 (默认: 172.168.178.181)')
     parser.add_argument('--skip_prepare', action='store_true', help='跳过 LKP 客户端准备')
+    parser.add_argument('--tbox_spec', default='', help='testbox的规范，格式为key=value，支持逗号分隔多个键值对，用于查找符合要求的执行机')
+    parser.add_argument('--tbox_api_key', default='', help='用于申请符合要求的执行机的API KEY')
+    parser.add_argument('--tbox_api_url', default='', help='用于申请符合要求的执行机的URL前缀地址')
     parser.add_argument('--extra', action='append', default=[], help='额外的键值对参数，格式为 key=value 可重复使用，支持空格分隔多个键值对')
 
     # wait_job_finish 参数
@@ -121,10 +125,23 @@ def main():
     parser.add_argument("--logs_dir", help='指定这个参数后，用例执行完的日志会从compass-ci服务器回传到该目录下')
 
     args = parser.parse_args()
+    testbox_dict={}
 
     try:
         # 步骤1：提交作业
         print_step("步骤1", "提交 LKP 作业")
+
+        # 解析 tbox_spec 获取testbox
+        if args.tbox_spec:
+            testboxes = get_available_testboxes(params=args.tbox_spec, api_key=args.tbox_api_key, api_url=args.tbox_api_url)
+            if testboxes:
+                testbox_dict = testboxes[0]
+            else:
+                raise ValueError(f"can't find available testbox by tbox_spec: {args.tbox_spec}") 
+            testbox = testbox_dict.get("testbox")
+        else:
+            testbox = args.testbox
+
         # 解析 extra 参数
         extra_params = parse_extra_params(args.extra) if args.extra else None
         logger.debug(f"the extra params: {extra_params}")
@@ -133,7 +150,7 @@ def main():
             os_name=args.os,
             os_arch=args.os_arch,
             os_version=args.os_version,
-            testbox=args.testbox,
+            testbox=testbox,
             my_account=args.my_account,
             my_name=args.my_name,
             my_token=args.my_token,
@@ -168,7 +185,18 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
+    finally:
+        ips = []
+        if args.tbox_spec and testbox_dict:
+            if testbox_dict.get('type') == 'hw':
+                ips = []
+                taskids = []
+                if testbox_dict.get('ip'):
+                    ips.append(testbox_dict.get('ip'))
+                if testbox_dict.get('task_id'):
+                    taskids.append(testbox_dict.get('task_id'))
 
+                return_machines(ips, taskids, args.tbox_api_key, args.tbox_api_url)
 
 if __name__ == '__main__':
     main()
