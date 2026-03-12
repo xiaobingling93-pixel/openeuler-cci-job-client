@@ -9,6 +9,9 @@ OS=${OS-"debian"}
 ARCH=${ARCH-"aarch64"}
 testbox=${testbox-"vm-2p8g"}
 timeout=${timeout-86400}
+tbox_spec=${tbox_spec-""}
+tbox_api_key=${tbox_api_key-""}
+tbox_api_url=${tbox_api_url-""}
 poll_interval=${poll_interval-10}
 extra=${extra-"os_mount=initramfs"}
 
@@ -35,5 +38,8 @@ python3 -u src/submit_wait_job.py \
 --sched_port ${sched_port} \
 --poll_interval ${poll_interval} \
 --timeout ${timeout} \
+--tbox_spec "${tbox_spec}" \
+--tbox_api_key "${tbox_api_key}" \
+--tbox_api_url "${tbox_api_url}" \
 --extra "${extra}" \
 --logs_dir ${testcase_dir}
