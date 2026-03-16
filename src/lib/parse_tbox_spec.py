@@ -22,7 +22,7 @@ LAB_REPO = "LAB_REPO"
 DEFAULT_HOSTS_PATH = "/c/lab-z9"
 
 # API base URL for machine operations (apply, query, cancel, return)
-OPS_API_BASE = "https://sys-uatp.byted.org/api/v1/ops"
+OPS_API_BASE = "https://localhost/api/v1/ops"
 
 # Default values for dc/vm type
 DEFAULT_DC_VM_PARAMS = {

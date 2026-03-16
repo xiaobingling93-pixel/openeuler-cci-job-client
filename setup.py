@@ -115,7 +115,7 @@ def install_dependency_debian() -> bool:
     success = True
     
     # 安装系统包（先检查是否已安装）
-    packages = ['cpio', 'git', 'ruby', 'gem', 'python3-pip', 'python3-requests']
+    packages = ['cpio', 'git', 'ruby', 'gem', 'python3-pip', 'python3-requests', 'python3-yaml']
     packages_to_install = []
     
     for pkg in packages:
