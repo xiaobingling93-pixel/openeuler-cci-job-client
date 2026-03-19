@@ -19,6 +19,12 @@ testcase_dir="${WORKSPACE}/testcase_logs"
 if [ ! -d "${testcase_dir}" ];then
   sudo mkdir -p ${testcase_dir}
 fi
+
+if [ "${ARCH}" == "arm64" ];then
+    ARCH="aarch64"
+elif [ "${ARCH}" == "amd64" ];then
+    ARCH="x86_64"
+fi
 echo "当前执行用户：$(whoami)"
 echo "the testcase is ${job_yaml}, and the logs dir is ${testcase_logs_dir}"
 # 获取脚本所在目录的绝对路径
