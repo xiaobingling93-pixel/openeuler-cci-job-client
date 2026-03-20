@@ -31,7 +31,7 @@ pip install -r requirements.txt
 ```
 debian系统
 ```bash
-apt install -y python3-requests
+apt install -y python3-requests python3-yaml
 ```
 
 ## 安装与配置
