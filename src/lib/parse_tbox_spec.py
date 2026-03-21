@@ -6,9 +6,15 @@ import os
 import yaml
 import requests
 import time
+import signal
+import logging
 from typing import Dict, Optional, List
 from functools import wraps
 from urllib.parse import urljoin
+
+# Setup logger
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 # Retry decorator for network requests
@@ -170,57 +176,92 @@ def get_dc_vm_testboxes(dir_path: Optional[str] = None, params: Optional[str] = 
 
     return result
 
-def poll_apply_task(task_id: int, api_key: str, api_url: Optional[str] = None, poll_interval: int = 2) -> List[str]:
+def poll_apply_task(task_id: int, api_key: str, api_url: Optional[str] = None, poll_interval: int = 2, duration: int = 86400) -> List[str]:
     """
     Poll for task completion and return available IPs.
+    Handles SIGTERM signal to cancel the task gracefully.
 
     Args:
         task_id: Task ID to poll
         api_key: API key for authentication
         api_url: Optional API URL prefix (if not provided, uses OPS_API_BASE)
         poll_interval: Interval in seconds between polling
+        duration: Maximum wait time in seconds (default: 86400)
 
     Returns:
-        List of available IP addresses
+        List of available IP addresses, empty list if interrupted or timeout
     """
     if api_url is None:
         api_url = OPS_API_BASE
 
-    while True:
+    current_task_id = task_id
+    current_api_key = api_key
+    current_url_base = api_url
+    interrupted = [False]
+    start_time = time.time()
+
+    def sigterm_handler(signum, frame):
+        logger.info(f"Received SIGTERM, cancelling task {current_task_id}...")
+        interrupted[0] = True
         try:
-            task_data = query_apply_task(task_id, api_key, api_url)
-
-            state = task_data.get('state', '')
-
-            # Check if task is completed
-            if state == 'completed':
-                # Get started_tasks
-                schedule = task_data.get('schedule', {})
-                started_tasks = schedule.get('started_tasks', [])
-
-                # If started_tasks is empty, continue polling
-                if not started_tasks:
-                    time.sleep(poll_interval)
-                    continue
-
-                # Check if any started_task has state == complete
-                available_ips = []
-                for task_info in started_tasks:
-                    if task_info.get('state') == 'complete':
-                        available_ips.append(task_info.get('machine'))
-
-                if available_ips:
-                    return available_ips
-                else:
-                    time.sleep(poll_interval)
-
-            elif state in ('failed', 'canceled'):
-                raise ValueError(f"Task failed or canceled: {state}")
-
-            time.sleep(poll_interval)
-
+            cancel_apply_task(current_task_id, current_api_key, current_url_base)
+            logger.info(f"Task {current_task_id} cancelled successfully.")
         except Exception as e:
-            raise ValueError(f"Failed to query task status: {e}")
+            logger.info(f"Failed to cancel task {current_task_id}: {e}")
+
+    original_handler = signal.signal(signal.SIGTERM, sigterm_handler)
+    start_time = time.time()
+
+    try:
+        while True:
+            # Check timeout
+            elapsed = time.time() - start_time
+            if elapsed > duration:
+                logger.info(f"Poll timeout after {elapsed:.0f} seconds, cancelling task...")
+                try:
+                    cancel_apply_task(current_task_id, current_api_key, current_url_base)
+                    logger.info(f"Task {current_task_id} cancelled due to timeout.")
+                except Exception as e:
+                    logger.info(f"Failed to cancel task {current_task_id}: {e}")
+                raise TimeoutError(f"Polling task {task_id} timed out after {duration} seconds")
+
+            if interrupted[0]:
+                logger.info("Poll loop cancelled by SIGTERM")
+                return []
+
+            try:
+                task_data = query_apply_task(task_id, api_key, api_url)
+
+                state = task_data.get('state', '')
+
+                # Check if task is completed
+                if state == 'completed':
+                    schedule = task_data.get('schedule', {})
+                    started_tasks = schedule.get('started_tasks', [])
+
+                    if not started_tasks:
+                        time.sleep(poll_interval)
+                        continue
+
+                    available_ips = []
+                    for task_info in started_tasks:
+                        if task_info.get('state') == 'complete':
+                            available_ips.append(task_info.get('machine'))
+
+                    if available_ips:
+                        return available_ips
+                    else:
+                        time.sleep(poll_interval)
+
+                elif state in ('failed', 'canceled'):
+                    raise ValueError(f"Task failed or canceled: {state}")
+
+                time.sleep(poll_interval)
+
+            except Exception as e:
+                raise ValueError(f"Failed to query task status: {e}")
+    finally:
+        signal.signal(signal.SIGTERM, original_handler)
 
 def build_ip_filename_map(dir_path: Optional[str] = None, params: Optional[str] = None) -> Dict[str, str]:
     """
@@ -259,7 +300,7 @@ def build_ip_filename_map(dir_path: Optional[str] = None, params: Optional[str] 
 def get_hw_testboxes(dir_path: Optional[str] = None, params: Optional[str] = None,
                      api_url: Optional[str] = None,
                      poll_interval: int = 2,
-                     duration: str = "24h",
+                     duration: int = 86400,
                      api_key: Optional[str] = None) -> List[Dict]:
     """
     Get available hw testboxes via API.
@@ -269,7 +310,7 @@ def get_hw_testboxes(dir_path: Optional[str] = None, params: Optional[str] = Non
         params: Matching parameters (comma-separated k=v)
         api_url: Optional API URL prefix (if not provided, uses OPS_API_BASE)
         poll_interval: Interval in seconds between polling task status
-        duration: Duration for machine apply
+        duration: Maximum wait time in seconds (default: 86400)
         api_key: API key for authentication
 
     Returns:
@@ -282,6 +323,7 @@ def get_hw_testboxes(dir_path: Optional[str] = None, params: Optional[str] = Non
         return []
 
     ip_list = list(ip_filename_map.keys())
+    task_id = None
 
     # Use apply_machines function to create task
     try:
@@ -292,30 +334,40 @@ def get_hw_testboxes(dir_path: Optional[str] = None, params: Optional[str] = Non
         raise ValueError(f"Failed to apply machines: {e}")
 
     # Poll for task completion
-    available_ips = poll_apply_task(task_id, api_key, api_url, poll_interval)
+    try:
+        available_ips = poll_apply_task(task_id, api_key, api_url, poll_interval, duration)
 
-    # Get available IPs from started_tasks
-    result_ips = available_ips
+        # Get available IPs from started_tasks
+        result_ips = available_ips
 
-    if not result_ips:
-        result_ips = ip_list
+        if not result_ips:
+            result_ips = ip_list
 
-    # Build result: list of {testbox, type, task_id, ip} dicts
-    result = []
-    for ip in result_ips:
-        if ip in ip_filename_map:
-            filename = ip_filename_map[ip]
-            result.append({"testbox": filename, "type": "hw", "task_id": task_id, "ip": ip})
-        else:
-            raise ValueError(f"IP {ip} from API not found in local testbox list")
+        # Build result: list of {testbox, type, task_id, ip} dicts
+        result = []
+        for ip in result_ips:
+            if ip in ip_filename_map:
+                filename = ip_filename_map[ip]
+                result.append({"testbox": filename, "type": "hw", "task_id": task_id, "ip": ip})
+            else:
+                raise ValueError(f"IP {ip} from API not found in local testbox list")
 
-    return result
+        return result
+    except Exception as e:
+        # 发生异常时，尝试归还机器
+        logger.info(f"Error occurred, returning machines: task_id={task_id}, ips={ip_list}")
+        try:
+            return_machines(ip_list, [task_id], api_key, api_url)
+            logger.info(f"Machines returned successfully")
+        except Exception as return_error:
+            logger.info(f"Failed to return machines: {return_error}")
+        raise e
 
 def get_available_testboxes(dir_path: Optional[str] = None, params: Optional[str] = None,
                           api_url: Optional[str] = None,
                           poll_interval: int = 2,
                           num: int = 1,
-                          duration: str = "24h",
+                          duration: int = 86400,
                           api_key: Optional[str] = None) -> List[Dict]:
     """
     Get available testboxes by type.
@@ -330,7 +382,7 @@ def get_available_testboxes(dir_path: Optional[str] = None, params: Optional[str
         api_url: Optional API URL prefix (if not provided, uses OPS_API_BASE)
         poll_interval: Interval in seconds between polling task status
         num: Number of testboxes to request from API (for hw type)
-        duration: Duration for machine apply (e.g., "24h", "24h30m28s")
+        duration: Duration for machine apply in seconds (default: 86400)
         api_key: API key for authentication (required for hw type)
 
     Returns:
@@ -356,13 +408,13 @@ def get_available_testboxes(dir_path: Optional[str] = None, params: Optional[str
     return []
 
 @retry_on_request_exception
-def apply_machines(ip_list: List[str], duration: str, api_key: str, api_url: Optional[str] = None) -> int:
+def apply_machines(ip_list: List[str], duration: int, api_key: str, api_url: Optional[str] = None) -> int:
     """
     Apply for machines.
 
     Args:
         ip_list: List of IP addresses to apply
-        duration: Duration string (e.g., "24h", "24h30m28s")
+        duration: Duration in seconds
         api_key: API key for authentication
         api_url: Optional API URL prefix (if not provided, uses OPS_API_BASE)
 
@@ -381,13 +433,14 @@ def apply_machines(ip_list: List[str], duration: str, api_key: str, api_url: Opt
         "x-api-key": api_key,
         "Content-Type": "application/json"
     }
+
     payload = {
         "ips": ip_list,
-        "duration": duration
+        "duration": f"{duration}s"
     }
 
     response = requests.post(url, json=payload, headers=headers, timeout=30)
-    print(response, url, payload, headers)
+    logger.info(f"Apply request: {response}, url: {url}, payload: {payload}")
     response.raise_for_status()
     data = response.json()
 
@@ -421,7 +474,7 @@ def query_apply_task(task_id: int, api_key: str, api_url: Optional[str] = None) 
         "Content-Type": "application/json"
     }
 
-    print(url)
+    logger.info(f"Query task status URL: {url}")
     status_response = requests.get(url, headers=headers, timeout=30)
     status_response.raise_for_status()
     data = status_response.json()
