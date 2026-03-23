@@ -25,6 +25,7 @@ import argparse
 import os
 import logging
 import logging.config
+import signal
 
 from pathlib import Path
 from submit_job import submit_job
@@ -126,6 +127,50 @@ def main():
 
     args = parser.parse_args()
     testbox_dict={}
+    interrupted = [False]
+
+    def return_machines_handler():
+        """归还机器 - finally 和 SIGTERM 都会调用，需防止重复"""
+        if interrupted[0]:
+            logger.warning("机器已在之前归还，跳过")
+            return
+        interrupted[0] = True
+
+        # 检查是否需要归还机器
+        if not args.tbox_spec:
+            logger.warning("无需归还机器（未指定 tbox_spec）")
+            return
+        if not testbox_dict:
+            logger.warning("无需归还机器（未申请机器）")
+            return
+        if testbox_dict.get('type') != 'hw':
+            logger.warning(f"无需归还机器（非 hw 类型: {testbox_dict.get('type')}）")
+            return
+
+        ips = []
+        taskids = []
+        if testbox_dict.get('ip'):
+            ips.append(testbox_dict.get('ip'))
+
+        if testbox_dict.get('task_id'):
+            taskids.append(testbox_dict.get('task_id'))
+
+        logger.warning(f"正在归还机器... ips={ips}, task_ids={taskids}")
+
+        if ips:
+            try:
+                return_machines(ips, taskids, args.tbox_api_key, args.tbox_api_url)
+                logger.warning(f"机器归还成功: ips={ips}, task_ids={taskids}")
+            except Exception as e:
+                logger.error(f"归还机器失败: ips={ips}, task_ids={taskids}, error={e}")
+
+    # Register SIGTERM signal handler
+    def sigterm_handler(signum, frame):
+        logger.warning(f"收到 SIGTERM 信号 (信号号: {signum})")
+        return_machines_handler()
+        sys.exit(128 + signum)
+
+    signal.signal(signal.SIGTERM, sigterm_handler)
 
     try:
         # 步骤1：提交作业
@@ -133,7 +178,7 @@ def main():
 
         # 解析 tbox_spec 获取testbox
         if args.tbox_spec:
-            testboxes = get_available_testboxes(params=args.tbox_spec, api_key=args.tbox_api_key, api_url=args.tbox_api_url)
+            testboxes = get_available_testboxes(params=args.tbox_spec, api_key=args.tbox_api_key, api_url=args.tbox_api_url, duration=args.timeout)
             if testboxes:
                 testbox_dict = testboxes[0]
             else:
@@ -186,17 +231,9 @@ def main():
         traceback.print_exc()
         sys.exit(1)
     finally:
-        ips = []
-        if args.tbox_spec and testbox_dict:
-            if testbox_dict.get('type') == 'hw':
-                ips = []
-                taskids = []
-                if testbox_dict.get('ip'):
-                    ips.append(testbox_dict.get('ip'))
-                if testbox_dict.get('task_id'):
-                    taskids.append(testbox_dict.get('task_id'))
-
-                return_machines(ips, taskids, args.tbox_api_key, args.tbox_api_url)
+        # 归还机器（SIGTERM、正常退出、异常退出都会触发）
+        return_machines_handler()
 
 if __name__ == '__main__':
     main()
+
