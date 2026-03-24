@@ -70,11 +70,11 @@ echo "store rootfs to compass-ci"
 ssh root@${TARGET_IP} "mkdir -p ${OS_BASE_DIR}/${TIMESTAMP}/boot/ ${INITRD_BASE_DIR}/${TIMESTAMP}/" || error_exit "mkdir remote dir failed"
 
 # 同步内核文件并创建软链接
-rsync -avz "${LOCAL_ROOTFS_DIR}/vmlinuz-${TIMESTAMP}" root@${TARGET_IP}:${OS_BASE_DIR}/${TIMESTAMP}/boot/ || error_exit "rsync vmlinuz failed"
+rsync -avz "${LOCAL_ROOTFS_DIR}/vmlinuz" root@${TARGET_IP}:${OS_BASE_DIR}/${TIMESTAMP}/boot/ || error_exit "rsync vmlinuz failed"
 ssh root@${TARGET_IP} "ln -sf ${OS_BASE_DIR}/${TIMESTAMP}/boot/vmlinuz-${TIMESTAMP} ${OS_BASE_DIR}/${TIMESTAMP}/boot/vmlinuz" || error_exit "link vmlinuz failed"
 
 # 同步模块文件并创建软链接
-rsync -avz "${LOCAL_ROOTFS_DIR}/modules-${TIMESTAMP}.cgz" root@${TARGET_IP}:${OS_BASE_DIR}/${TIMESTAMP}/boot/ || error_exit "rsync modules.cgz failed"
+rsync -avz "${LOCAL_ROOTFS_DIR}/modules.cgz" root@${TARGET_IP}:${OS_BASE_DIR}/${TIMESTAMP}/boot/ || error_exit "rsync modules.cgz failed"
 ssh root@${TARGET_IP} "ln -sf ${OS_BASE_DIR}/${TIMESTAMP}/boot/modules-${TIMESTAMP}.cgz ${OS_BASE_DIR}/${TIMESTAMP}/boot/modules.cgz" || error_exit "link modules.cgz failed"
 
 # 同步rootfs文件并改名
