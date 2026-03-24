@@ -49,9 +49,17 @@ echo "wget rootfs from ${rootfs_remote_dir}"
 if [ ! -d ${LOCAL_ROOTFS_DIR} ];then
   mkdir -p ${LOCAL_ROOTFS_DIR} || error_exit "mkdir ${LOCAL_ROOTFS_DIR} failed"
 fi
-wget -P ${LOCAL_ROOTFS_DIR} ${REMOTE_ROOTFS_DIR}/modules-${TIMESTAMP}.cgz >/dev/null 2>&1 || error_exit "wget modules failed"
-wget -P ${LOCAL_ROOTFS_DIR} ${REMOTE_ROOTFS_DIR}/rootfs.cgz >/dev/null 2>&1 || error_exit "wget rootfs failed"
-wget -P ${LOCAL_ROOTFS_DIR} ${REMOTE_ROOTFS_DIR}/vmlinuz-${TIMESTAMP} >/dev/null 2>&1 || error_exit "wget vmliuz failed"
+
+debina_arch=${ARCH}
+if [ "${ARCH}" == "aarch64" ];then
+    debina_arch="arm64"
+elif [ "${ARCH}" == "x86_64" ];then
+    debina_arch="amd64"
+fi
+
+wget -P ${LOCAL_ROOTFS_DIR} ${REMOTE_ROOTFS_DIR}/${debina_arch}/modules.cgz >/dev/null 2>&1 || error_exit "wget modules failed"
+wget -P ${LOCAL_ROOTFS_DIR} ${REMOTE_ROOTFS_DIR}/${debina_arch}/rootfs.cgz >/dev/null 2>&1 || error_exit "wget rootfs failed"
+wget -P ${LOCAL_ROOTFS_DIR} ${REMOTE_ROOTFS_DIR}/${debina_arch}/vmlinuz >/dev/null 2>&1 || error_exit "wget vmliuz failed"
 
 
 echo "check the SSH connection of compass-ci"
