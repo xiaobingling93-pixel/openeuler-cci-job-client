@@ -152,7 +152,7 @@ def wait_job_status(
     """
     if not job_id:
         die("错误：未设置 job_id 变量")
-    
+    job_result_link = None
     logger.info("轮询任务状态")
     final_stage, job_suite = query_jobs(job_id, sched_host, sched_port, timeout, poll_interval)
 
@@ -172,6 +172,7 @@ def wait_job_status(
         logger.info(f"{job_suite}任务结果存放目录：result_root= {result_root}")
         logger.info(f"{job_suite}测试套执行结果归档链接：")
         logger.info(f"http://{sched_host}:{SRV_HTTP_PORT}{result_root}")
+        job_result_link = "http://"+sched_host+":"+str(SRV_HTTP_PORT)+result_root
         if logs_dir:
             logger.info(f"用例日志将从compass-ci:{sched_host}的/srv{result_root}回传到{logs_dir}")
             cmd = [ "rsync", "-avz", "--progress", f"root@{sched_host}:/srv{result_root}", f"{logs_dir}" ]
@@ -185,6 +186,89 @@ def wait_job_status(
 
     if final_stage == 'abort_invalid' or final_stage == 'abort_provider' or final_stage == 'abort_wait' or job_health != 'success':
         sys.exit(1)
+
+    if logs_dir:
+        result_json_path = os.path.join(logs_dir, job_id, 'result.json')
+        if os.path.exists(result_json_path):
+            try:
+                with open(result_json_path, 'r', encoding='utf-8') as f:
+                    result_data = json.load(f)
+
+                total_cases = len(result_data)
+                passed_cases = []
+                failed_cases = []
+                skipped_cases = []
+                other_cases = []
+
+                for test_case, result in result_data.items():
+                    if result == 'pass':
+                        passed_cases.append(test_case)
+                    elif result == 'failed':
+                        failed_cases.append(test_case)
+                    elif result == 'skip' or result == 'skipped':
+                        skipped_cases.append(test_case)
+                    else:
+                        other_cases.append(test_case)
+
+                passed_count = len(passed_cases)
+                failed_count = len(failed_cases)
+                skipped_count = len(skipped_cases)
+                other_count = len(other_cases)
+
+                logger.info("=" * 60)
+                logger.info("测试用例统计结果:")
+                logger.info("=" * 60)
+                logger.info(f"{'总用例数':<5} {'成功用例':<5} {'失败用例':<5} {'跳过用例':<5}")
+                logger.info(f"{total_cases:<10} {passed_count:<10} {failed_count:<10} {skipped_count:<10}")
+                logger.info("=" * 60)
+
+                logger.info("详细测试用例结果:")
+                logger.info("=" * 60)
+                logger.info(f"{'用例名称':<10} {'状态':<10} {'日志路径':<50}")
+                logger.info("-" * 60)
+
+                if failed_cases:
+                    logger.error("失败的测试用例:")
+                    for case in failed_cases:
+                        case_name = case.replace('result.', '')
+                        log_path = os.path.join(job_result_link, 'logs', case_name)
+                        logger.error(f"{case_name:<10} {'failed':<10} {log_path}")
+                    logger.error("-" * 60)
+
+                if passed_cases:
+                    logger.info("成功的测试用例:")
+                    for case in passed_cases:
+                        case_name = case.replace('result.', '')
+                        log_path = os.path.join(job_result_link, 'logs', case_name)
+                        logger.info(f"{case_name:<10} {'pass':<10} {log_path}")
+                    logger.info("-" * 60)
+
+                if skipped_cases:
+                    logger.info("跳过的测试用例:")
+                    for case in skipped_cases:
+                        case_name = case.replace('result.', '')
+                        log_path = os.path.join(job_result_link, 'logs', case_name)
+                        logger.info(f"{case_name:<10} {'skip':<10} {log_path}")
+                    logger.info("-" * 60)
+
+                if other_cases:
+                    logger.info("其他状态的测试用例:")
+                    for case in other_cases:
+                        case_name = case.replace('result.', '')
+                        log_path = os.path.join(job_result_link, 'logs', case_name)
+                        result_value = result_data[case]
+                        logger.info(f"{case_name:<10} {result_value:<10} {log_path}")
+                    logger.info("-" * 60)
+
+                logger.info("=" * 60)
+
+                if failed_cases:
+                    logger.error(f"发现失败的测试用例: {failed_count}个")
+                    sys.exit(1)
+                else:
+                    logger.info("所有测试用例均通过")
+            except Exception as e:
+                logger.error(f"解析result.json文件失败: {e}")
 
 def wait_job_finish(
     job_id: str,
