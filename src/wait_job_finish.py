@@ -269,6 +269,8 @@ def wait_job_status(
                     logger.info("所有测试用例均通过")
             except Exception as e:
                 logger.error(f"解析result.json文件失败: {e}")
+        logger.error(f"result.json 文件不存在")
+    logger.error(f"{logs_dir}日志目录不存在")
 
 def wait_job_finish(
     job_id: str,
